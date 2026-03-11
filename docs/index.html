@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>コメントスライム - 配信をもっと楽しく</title>
+<style>
+@font-face { font-family: 'DotGothic16'; font-style: normal; font-weight: 400; src: url('assets/fonts/DotGothic16.ttf') format('truetype'); }
+@font-face { font-family: 'Noto Sans JP'; font-style: normal; font-weight: 400; src: url('assets/fonts/NotoSansJP-400.ttf') format('truetype'); }
+@font-face { font-family: 'Noto Sans JP'; font-style: normal; font-weight: 700; src: url('assets/fonts/NotoSansJP-700.ttf') format('truetype'); }
+@font-face { font-family: 'Noto Sans JP'; font-style: normal; font-weight: 900; src: url('assets/fonts/NotoSansJP-900.ttf') format('truetype'); }
+@font-face { font-family: 'Material Icons'; font-style: normal; font-weight: 400; src: url('assets/fonts/MaterialIcons.ttf') format('truetype'); }
+:root{--px:4px;--bg:#0d0d1a;--text:#e0e0e0;--accent:#64e6ff;--gold:#ffd700;--card:rgba(255,255,255,0.035);--border:rgba(255,255,255,0.07)}
+@media(max-width:600px){:root{--px:3px}}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;line-height:1.7}
+.pix{font-family:'DotGothic16',monospace}
+.mi{font-family:'Material Icons';font-weight:normal;font-style:normal;font-size:24px;display:inline-block;line-height:1;vertical-align:middle;-webkit-font-smoothing:antialiased}
+.mi.lg{font-size:32px}.mi.xl{font-size:40px}
+
+/* BG */
+.dungeon-bg{position:fixed;inset:0;z-index:-2;background-color:var(--bg);background-image:radial-gradient(rgba(100,230,255,0.05) 1px,transparent 1px);background-size:40px 40px}
+.particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
+.pt{position:absolute;border-radius:50%;animation:floatUp var(--dur,14s) linear infinite;animation-delay:var(--d,0s);left:var(--x,50%);width:var(--s,3px);height:var(--s,3px);background:var(--c,rgba(100,200,255,0.25))}
+@keyframes floatUp{0%{transform:translateY(110vh) scale(.5);opacity:0}10%{opacity:1}90%{opacity:.7}100%{transform:translateY(-10vh) scale(1.2);opacity:0}}
+
+/* REVEAL */
+.rv{opacity:0;transform:translateY(40px);transition:opacity .7s ease,transform .7s cubic-bezier(.175,.885,.32,1.275)}
+.rv.vis{opacity:1;transform:translateY(0)}
+.rv[data-d="1"]{transition-delay:.1s}.rv[data-d="2"]{transition-delay:.2s}.rv[data-d="3"]{transition-delay:.3s}.rv[data-d="4"]{transition-delay:.4s}
+
+/* SPRITES 32x32/frame, run=6, idle=4 */
+.spr{image-rendering:pixelated;background-repeat:no-repeat;display:inline-block}
+.spr.s128{width:128px;height:128px;background-size:auto 128px}
+.spr.s160{width:160px;height:160px;background-size:auto 160px}
+.spr.s96{width:96px;height:96px;background-size:auto 96px}
+.spr.s64{width:64px;height:64px;background-size:auto 64px}
+.spr.s48{width:48px;height:48px;background-size:auto 48px}
+.spr.s160.run{animation:r160 .5s steps(6) infinite}
+.spr.s128.run{animation:r128 .5s steps(6) infinite}.spr.s96.run{animation:r96 .5s steps(6) infinite}
+.spr.s64.run{animation:r64 .5s steps(6) infinite}.spr.s48.run{animation:r48 .5s steps(6) infinite}
+@keyframes r160{to{background-position:-960px 0}}
+@keyframes r128{to{background-position:-768px 0}}@keyframes r96{to{background-position:-576px 0}}
+@keyframes r64{to{background-position:-384px 0}}@keyframes r48{to{background-position:-288px 0}}
+.spr.s128.idle{animation:i128 .6s steps(4) infinite}.spr.s96.idle{animation:i96 .6s steps(4) infinite}
+.spr.s64.idle{animation:i64 .6s steps(4) infinite}.spr.s48.idle{animation:i48 .6s steps(4) infinite}
+@keyframes i128{to{background-position:-512px 0}}@keyframes i96{to{background-position:-384px 0}}
+@keyframes i64{to{background-position:-256px 0}}@keyframes i48{to{background-position:-192px 0}}
+.spr.t-n{background-image:url('assets/Slime/slime_run.png')}.spr.t-n.idle{background-image:url('assets/Slime/slime_idle.png')}
+.spr.t-f{background-image:url('assets/FireSlime/fire_slime_run.png')}.spr.t-f.idle{background-image:url('assets/FireSlime/fire_slime_idle.png')}
+.spr.t-w{background-image:url('assets/WaterSlime/water_slime_run.png')}.spr.t-w.idle{background-image:url('assets/WaterSlime/water_slime_idle.png')}
+.spr.t-l{background-image:url('assets/LeafSlime/leaf_slime_run.png')}.spr.t-l.idle{background-image:url('assets/LeafSlime/leaf_slime_idle.png')}
+.spr.t-m{background-image:url('assets/MudSlime/mud_slime_run.png')}.spr.t-m.idle{background-image:url('assets/MudSlime/mud_slime_idle.png')}
+.h-or{filter:hue-rotate(30deg) saturate(1.4)}.h-pk{filter:hue-rotate(280deg) saturate(1.4)}
+.h-gr{filter:hue-rotate(90deg) saturate(1.4)}.h-yw{filter:hue-rotate(55deg) saturate(1.6)}.h-cy{filter:hue-rotate(160deg) saturate(1.3)}
+.spr.s128.rainbow{animation:r128 .5s steps(6) infinite,rbH 1.2s linear infinite !important}
+.spr.s96.rainbow{animation:r96 .5s steps(6) infinite,rbH 1.2s linear infinite !important}
+@keyframes rbH{0%{filter:hue-rotate(0) saturate(2.2) brightness(1.1)}100%{filter:hue-rotate(360deg) saturate(2.2) brightness(1.1)}}
+
+/* GURIGEN SLIME: 150x150/frame, 6 frames idle (900x150 sheet) */
+.spr.t-g{background-image:url('assets/GuriGenSlime/gurigen_idle.png')}
+.spr.t-g.idle{background-image:url('assets/GuriGenSlime/gurigen_idle.png')}
+.spr.guridle{animation:guri150 .6s steps(6) infinite}
+@keyframes guri150{to{background-position:-900px 0}}
+.spr.gs150{width:150px;height:150px;background-size:auto 150px}
+.spr.gs120{width:120px;height:120px;background-size:auto 120px}
+.spr.gs80{width:80px;height:80px;background-size:auto 80px}
+.spr.gs150.guridle{animation-name:guri150}
+.spr.gs120.guridle{animation-name:guri120}
+.spr.gs80.guridle{animation-name:guri80}
+@keyframes guri120{to{background-position:-720px 0}}
+@keyframes guri80{to{background-position:-480px 0}}
+
+/* WALKING */
+.walk-track{position:relative;height:120px;overflow:hidden;margin:20px 0}
+.walk-track.tall{height:180px}
+.walk-s{position:absolute;bottom:0;animation:walkX 14s linear infinite;will-change:transform;transform:scaleX(-1)}
+@keyframes walkX{from{left:-180px}to{left:calc(100% + 180px)}}
+.walk-s:nth-child(1){animation-delay:0s}.walk-s:nth-child(2){animation-delay:-2.8s}
+.walk-s:nth-child(3){animation-delay:-5.6s}.walk-s:nth-child(4){animation-delay:-8.4s}.walk-s:nth-child(5){animation-delay:-11.2s}
+
+/* HERO */
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px}
+.hero h1{font-size:clamp(2.2rem,6vw,4rem);font-weight:900;color:var(--accent);letter-spacing:3px;margin-bottom:10px}
+.hero-sub{font-size:clamp(.95rem,2.5vw,1.25rem);color:#999;margin-bottom:36px}
+.scroll-ind{color:var(--accent);font-size:.9rem;animation:pulse2 2s ease-in-out infinite;margin-top:30px}
+@keyframes pulse2{0%,100%{opacity:.4;transform:translateY(0)}50%{opacity:1;transform:translateY(6px)}}
+
+/* FLOOR */
+.floor{text-align:center;padding:60px 0;position:relative}
+.floor-tag{display:inline-flex;align-items:center;gap:10px;font-family:'DotGothic16',monospace;font-size:clamp(1rem,2.8vw,1.6rem);font-weight:900;color:var(--accent);background:rgba(13,13,26,.95);border:3px solid var(--accent);padding:14px 36px;letter-spacing:2px}
+.floor::before{content:'';position:absolute;left:8%;right:8%;top:50%;height:2px;background:rgba(100,230,255,.15);z-index:-1}
+
+/* SECTION */
+.sec{max-width:880px;margin:0 auto;padding:70px 24px}
+.sec-title{font-size:clamp(1.4rem,3.5vw,2rem);font-weight:900;margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.sec-title .mi{color:var(--accent)}
+.sec-desc{font-size:1rem;color:#aaa;margin-bottom:28px;line-height:1.8}
+
+/* CARDS */
+.fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-top:18px}
+.fc{background:var(--card);border:2px solid var(--border);border-radius:12px;padding:24px 18px;transition:transform .3s,border-color .3s,box-shadow .3s;overflow:hidden}
+.fc:hover{transform:translateY(-4px);border-color:rgba(100,230,255,.2);box-shadow:0 8px 28px rgba(100,230,255,.05)}
+.fc .mi{font-size:28px;color:var(--accent);margin-bottom:8px}
+.fc h3{font-size:1.05rem;font-weight:900;margin-bottom:5px}
+.fc p{font-size:.85rem;color:#888;line-height:1.6}
+
+/* DATA BOX */
+.data-box{text-align:center;padding:40px 20px;border:2px solid rgba(100,230,255,.12);border-radius:14px;margin:20px 0;background:rgba(100,230,255,.02)}
+.data-box .big{font-size:clamp(1.2rem,3.5vw,1.8rem);font-weight:900;color:var(--text);margin-bottom:10px}
+.data-box .big .hl{color:var(--gold)}
+.at-tag{font-family:'DotGothic16',monospace;font-size:1.1rem;color:var(--accent);margin:10px 0;padding:8px 20px;display:inline-block;background:rgba(100,230,255,.05);border:2px solid rgba(100,230,255,.1);border-radius:8px}
+
+/* PIXEL BUBBLE */
+.px-bub{position:relative;display:inline-block;padding:calc(var(--px)*3) calc(var(--px)*5);background:#fff;color:#111;font-family:'DotGothic16',monospace;font-weight:800;font-size:16px;box-shadow:calc(var(--px)*-1) 0 0 0 #222,var(--px) 0 0 0 #222,0 calc(var(--px)*-1) 0 0 #222,0 var(--px) 0 0 #222}
+.px-bub::after{content:'';position:absolute;bottom:calc(var(--px)*-1);left:calc(var(--px)*4);width:var(--px);height:var(--px);background:#fff;box-shadow:var(--px) 0 0 0 #fff,calc(var(--px)*2) 0 0 0 #fff,calc(var(--px)*3) 0 0 0 #222,calc(var(--px)*-1) 0 0 0 #222,0 var(--px) 0 0 #fff,var(--px) var(--px) 0 0 #fff,calc(var(--px)*2) var(--px) 0 0 #222,calc(var(--px)*-1) var(--px) 0 0 #222,0 calc(var(--px)*2) 0 0 #fff,var(--px) calc(var(--px)*2) 0 0 #222,calc(var(--px)*-1) calc(var(--px)*2) 0 0 #222,0 calc(var(--px)*3) 0 0 #222}
+
+/* RANKING */
+.rank-box{background:rgba(0,0,0,.6);border:3px solid rgba(255,215,0,.2);border-radius:12px;padding:20px;max-width:370px;margin:0 auto 24px}
+/* Crowned slime */
+.crowned-slime{position:relative;display:inline-block}
+.crowned-slime .crown-icon{position:absolute;top:-12px;left:50%;transform:translateX(-50%);font-size:24px;z-index:1;filter:drop-shadow(0 1px 3px rgba(255,215,0,.5))}
+.rank-box h4{font-family:'DotGothic16',monospace;font-size:16px;color:var(--gold);text-align:center;margin-bottom:10px}
+.rr{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;margin:3px 0;font-family:'DotGothic16',monospace;font-size:14px}
+.rr.t1{background:rgba(255,215,0,.06);animation:rbBrd 2s linear infinite}
+@keyframes rbBrd{0%{border-left:4px solid hsl(0,80%,60%)}33%{border-left:4px solid hsl(120,80%,60%)}66%{border-left:4px solid hsl(240,80%,60%)}100%{border-left:4px solid hsl(360,80%,60%)}}
+.rr.t2{background:rgba(192,192,192,.04);border-left:4px solid #aaa}.rr.t3{background:rgba(205,127,50,.04);border-left:4px solid #cd7f32}
+.rr.t4,.rr.t5{border-left:4px solid #555}
+.rk-c{font-size:17px}.rk-c.rb{animation:rbH 1.2s linear infinite}
+.rk-n{flex:1}.rk-n.lv100{color:#111;font-weight:900;text-shadow:0 0 6px var(--gold),0 0 2px #fff}.rk-lv{opacity:.6}
+
+/* ANGEL */
+.angel-w{position:relative;display:inline-block}
+.angel-o{position:absolute;top:50%;left:50%;width:100px;height:100px;transform:translate(-50%,-55%);animation:aSpin 3.5s linear infinite;pointer-events:none}
+.a-p{position:absolute;font-family:'DotGothic16',monospace;font-size:18px;color:var(--gold);font-weight:900;text-shadow:0 0 10px rgba(255,215,0,.6)}
+.a-p:nth-child(1){top:0;left:50%;transform:translateX(-50%)}.a-p:nth-child(2){top:18%;right:0}
+.a-p:nth-child(3){bottom:18%;right:3%}.a-p:nth-child(4){bottom:0;left:50%;transform:translateX(-50%)}
+.a-p:nth-child(5){bottom:18%;left:3%}.a-p:nth-child(6){top:18%;left:0}
+@keyframes aSpin{from{transform:translate(-50%,-55%) rotate(0)}to{transform:translate(-50%,-55%) rotate(360deg)}}
+
+/* SC DEMO */
+.sc-demo{text-align:center;padding:24px;background:rgba(255,255,255,.02);border-radius:12px;border:2px solid rgba(255,100,100,.1)}
+.sc-lbl{font-family:'DotGothic16',monospace;color:#f472b6;margin-bottom:12px}
+
+/* PAID BADGE - slow white glow */
+.paid{display:inline-block;background:var(--gold);color:#000;font-family:'DotGothic16',monospace;font-weight:900;font-size:.7rem;padding:3px 10px;letter-spacing:1px;box-shadow:2px 2px 0 0 rgba(255,140,0,.5);animation:paidGlow 3s ease-in-out infinite}
+@keyframes paidGlow{0%,100%{box-shadow:2px 2px 0 0 rgba(255,140,0,.5),0 0 6px rgba(255,215,0,.2)}50%{box-shadow:2px 2px 0 0 rgba(255,140,0,.5),0 0 20px rgba(255,255,255,.5),0 0 40px rgba(255,215,0,.3)}}
+
+/* COMPARE TABLE */
+.cmp{width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;font-size:.88rem}
+.cmp th,.cmp td{padding:11px 12px;text-align:center;border-bottom:1px solid rgba(255,255,255,.05)}
+.cmp th{background:rgba(255,255,255,.05);font-weight:900;font-size:.9rem}
+.cmp th:nth-child(3){background:rgba(255,215,0,.08);color:var(--gold)}
+.cmp td:first-child{text-align:left;font-weight:700}
+.cmp tr:hover td{background:rgba(255,255,255,.02)}
+.cmp .chk-gold{color:var(--gold);font-size:1.1em;font-weight:900}
+.cmp .x-red{color:#ef4444;font-size:1.2em;font-weight:900}
+.cmp td:nth-child(3){background:rgba(255,215,0,.03);animation:cmpGlow 4s ease-in-out infinite}
+@keyframes cmpGlow{0%,100%{background:rgba(255,215,0,.03)}50%{background:rgba(255,255,255,.06)}}
+
+/* BENEFITS */
+.bl{list-style:none}.bl li{display:flex;align-items:flex-start;gap:12px;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.bl li:last-child{border-bottom:none}.bl .mi{color:var(--accent);flex-shrink:0;margin-top:2px}
+.bl h4{font-size:1rem;font-weight:900;margin-bottom:2px}.bl p{font-size:.85rem;color:#888}
+/* Icon animations */
+.ico-float{animation:icoFloat 3s ease-in-out infinite}
+@keyframes icoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.ico-spin-pause{animation:icoSpinPause 3s ease-in-out infinite}
+@keyframes icoSpinPause{0%{transform:rotate(0)}40%{transform:rotate(-360deg)}100%{transform:rotate(-360deg)}}
+
+/* SETUP */
+.steps{counter-reset:stp;list-style:none}
+.steps li{counter-increment:stp;display:flex;gap:13px;align-items:flex-start;margin:16px 0}
+.steps li::before{content:counter(stp);display:flex;align-items:center;justify-content:center;min-width:32px;height:32px;background:var(--accent);color:var(--bg);font-weight:900;font-size:.9rem;flex-shrink:0}
+.steps h4{font-weight:900;margin-bottom:2px}.steps p{font-size:.85rem;color:#888}
+
+/* LINKS */
+.link-row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin:20px 0}
+.link-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 22px;text-decoration:none;font-family:'DotGothic16',monospace;font-weight:900;font-size:.9rem;transition:transform .2s,box-shadow .2s;border:2px solid}
+.link-btn:hover{transform:translateY(-3px)}
+.link-btn.yt{background:rgba(255,0,0,.08);border-color:rgba(255,0,0,.3);color:#ff4444}
+.link-btn.tw{background:rgba(100,200,255,.06);border-color:rgba(100,200,255,.2);color:var(--accent)}
+.link-btn.booth{background:var(--gold);border-color:var(--gold);color:#000;font-size:1.05rem;padding:12px 36px;box-shadow:3px 3px 0 0 rgba(255,140,0,.4)}
+.link-btn.booth:hover{box-shadow:3px 3px 0 0 rgba(255,140,0,.4),0 6px 20px rgba(255,215,0,.2)}
+
+/* RAINBOW WAVE SVG */
+.svg-rb-line{stroke-width:4;fill:none;animation:svgRbWave 4s linear infinite;stroke-dasharray:20 10}
+@keyframes svgRbWave{0%{stroke:#ef4444;stroke-dashoffset:0}25%{stroke:#22c55e}50%{stroke:#3b82f6}75%{stroke:#a78bfa}100%{stroke:#ef4444;stroke-dashoffset:-60}}
+
+/* ============== EVOLUTION DEMO ============== */
+.evo-demo{background:rgba(0,0,0,.4);border:2px solid var(--border);border-radius:14px;padding:28px 20px;margin:24px auto;max-width:500px;text-align:center}
+.evo-demo .evo-slime-wrap{position:relative;display:inline-block;margin:16px 0}
+.evo-demo .evo-slime-wrap .evo-flash{position:absolute;inset:-10px;background:rgba(255,255,255,0);border-radius:50%;pointer-events:none;transition:background .15s}
+.evo-demo .evo-slime-wrap.flash .evo-flash{background:rgba(255,255,255,.7)}
+.evo-status{font-family:'DotGothic16',monospace;margin:10px 0}
+.evo-status .lv{font-size:1.3rem;color:var(--accent);font-weight:900}
+.evo-status .xp-text{font-size:.85rem;color:#999}
+/* XP Bar */
+.xp-bar-wrap{width:280px;height:20px;border:var(--px) solid #555;background:#222;padding:1px;margin:8px auto;box-shadow:var(--px) var(--px) 0 0 #333}
+.xp-bar{height:100%;width:0%;background-image:linear-gradient(to right,var(--gold) 0%,var(--gold) 78%,transparent 78%,transparent 100%);background-size:14px 100%;transition:width .3s steps(14,end)}
+/* Buttons */
+.evo-btns{display:flex;gap:12px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+.evo-btn{font-family:'DotGothic16',monospace;font-weight:900;font-size:.85rem;padding:8px 18px;border:2px solid;cursor:pointer;transition:transform .1s}
+.evo-btn:active{transform:scale(.95)}
+.evo-btn.comment{background:rgba(100,230,255,.1);border-color:var(--accent);color:var(--accent)}
+.evo-btn.superchat{background:rgba(255,100,100,.1);border-color:#f472b6;color:#f472b6}
+.evo-btn.reset{background:rgba(255,255,255,.05);border-color:#666;color:#999;font-size:.75rem;padding:6px 12px}
+.evo-msg{font-family:'DotGothic16',monospace;font-size:.9rem;color:var(--gold);min-height:1.5em;margin-top:8px}
+.levelup-anim{animation:lvUpPop .5s ease-out}
+@keyframes lvUpPop{0%{transform:scale(1.5);color:#fff}100%{transform:scale(1)}}
+
+footer{text-align:center;padding:36px 24px;font-size:.75rem;color:#444;font-family:'DotGothic16',monospace}
+</style>
+</head>
+<body>
+
+<div class="dungeon-bg"></div>
+<div class="particles">
+  <div class="pt" style="--x:10%;--dur:16s;--d:0s;--s:3px;--c:rgba(100,200,255,.25)"></div>
+  <div class="pt" style="--x:25%;--dur:20s;--d:2s;--s:2px;--c:rgba(160,120,255,.2)"></div>
+  <div class="pt" style="--x:42%;--dur:13s;--d:1s;--s:3px;--c:rgba(100,230,255,.18)"></div>
+  <div class="pt" style="--x:58%;--dur:18s;--d:4s;--s:2px;--c:rgba(255,215,0,.12)"></div>
+  <div class="pt" style="--x:72%;--dur:15s;--d:3s;--s:3px;--c:rgba(100,200,255,.2)"></div>
+  <div class="pt" style="--x:88%;--dur:19s;--d:6s;--s:2px;--c:rgba(244,114,182,.12)"></div>
+</div>
+
+<!-- ============== HERO ============== -->
+<section class="hero">
+  <h1 class="pix">コメントスライム</h1>
+  <p class="hero-sub">コメントがスライムになって画面を駆け抜ける！<br>あなたの配信を もっと楽しく、もっと盛り上げよう</p>
+  <div style="margin:30px 0">
+    <div class="spr gs150 t-g guridle" style="transform:scaleX(-1)"></div>
+  </div>
+  <p class="scroll-ind pix"><span class="mi" style="font-size:18px">expand_more</span> スクロールしてダンジョンを探索しよう <span class="mi" style="font-size:18px">expand_more</span></p>
+</section>
+
+<!-- ============== B1F: DATA SAVE ============== -->
+<div class="floor rv"><span class="floor-tag"><span class="mi">castle</span> B1F &#8212; データ保存システム</span></div>
+<section class="sec">
+  <div class="data-box rv">
+    <span class="mi xl" style="color:var(--accent);margin-bottom:10px;display:block">save</span>
+    <div class="big">あなたの <span class="hl">@ユーザー名</span> でデータが保存される！</div>
+    <p style="color:#999;margin-bottom:12px">視聴者ひとりひとりのレベル・XP・進化状態が自動保存。<br>次の配信でも続きからプレイできます！</p>
+    <div class="at-tag">@ぐりげん → Lv.42 火スライム</div>
+  </div>
+  <div class="fg">
+    <div class="fc rv" data-d="1"><span class="mi">save</span><h3>自動データ保存</h3><p>ユーザー名ベースで自動保存。配信をまたいでもレベルが引き継がれます。</p></div>
+    <div class="fc rv" data-d="2"><span class="mi">trending_up</span><h3>XP & レベルアップ</h3><p>コメントのたびXP獲得！レベルが上がると「LEVEL UP!!」が表示されます。</p></div>
+    <div class="fc rv" data-d="3"><span class="mi">palette</span><h3>ユーザー固有カラー</h3><p>ユーザー名からハッシュで色が決まるので、毎回同じ色のスライムが登場！</p></div>
+  </div>
+</section>
+
+<!-- ============== B2F: EVOLUTION ============== -->
+<div class="floor rv"><span class="floor-tag"><span class="mi">bolt</span> B2F &#8212; 進化システム <span class="paid">有料版</span></span></div>
+<section class="sec">
+  <div class="sec-title rv"><span class="mi lg" style="color:#22c55e">eco</span> レベル10で進化！</div>
+  <p class="sec-desc rv">レベル10に到達すると、スライムが<strong>火・水・草・泥</strong>の4種類にランダム進化！<br>進化の瞬間はフラッシュ演出付き。視聴者も配信者もワクワクする瞬間！</p>
+
+  <!-- INTERACTIVE EVOLUTION DEMO -->
+  <div class="evo-demo rv" id="evoDemoBox">
+    <div class="pix" style="color:var(--accent);font-size:1rem;margin-bottom:8px"><span class="mi" style="font-size:18px;vertical-align:middle">science</span> 体験してみよう！ボタンを押してスライムを育てよう</div>
+    <div class="evo-slime-wrap" id="evoSlimeWrap">
+      <div class="evo-flash" id="evoFlash"></div>
+      <div class="spr s128 t-n idle" id="evoSlime" style="transform:scaleX(-1)"></div>
+    </div>
+    <div class="evo-status">
+      <div class="lv" id="evoLv">Lv. 1</div>
+      <div class="xp-text" id="evoXpText">XP: 0 / 1</div>
+    </div>
+    <div class="xp-bar-wrap"><div class="xp-bar" id="evoBar"></div></div>
+    <div class="evo-btns">
+      <button class="evo-btn comment" onclick="evoAddXp(1)"><span class="mi" style="font-size:16px;vertical-align:middle">chat</span> コメント (+1 XP)</button>
+      <button class="evo-btn superchat" onclick="evoAddXp(10)"><span class="mi" style="font-size:16px;vertical-align:middle">payments</span> スパチャ 100円 (+10 XP)</button>
+      <button class="evo-btn reset" onclick="evoReset()"><span class="mi" style="font-size:14px;vertical-align:middle">refresh</span> リセット</button>
+    </div>
+    <div class="evo-msg" id="evoMsg"></div>
+  </div>
+
+  <div style="display:flex;gap:24px;justify-content:center;flex-wrap:wrap;margin:24px 0">
+    <div class="rv" data-d="1" style="text-align:center"><div class="spr s96 t-f idle" style="transform:scaleX(-1)"></div><div class="pix" style="color:#ef4444;margin-top:3px">火スライム</div></div>
+    <div class="rv" data-d="2" style="text-align:center"><div class="spr s96 t-w idle" style="transform:scaleX(-1)"></div><div class="pix" style="color:#60a5fa;margin-top:3px">水スライム</div></div>
+    <div class="rv" data-d="3" style="text-align:center"><div class="spr s96 t-l idle" style="transform:scaleX(-1)"></div><div class="pix" style="color:#22c55e;margin-top:3px">草スライム</div></div>
+    <div class="rv" data-d="4" style="text-align:center"><div class="spr s96 t-m idle" style="transform:scaleX(-1)"></div><div class="pix" style="color:#a16207;margin-top:3px">泥スライム</div></div>
+  </div>
+  <svg width="100%" height="20" viewBox="0 0 200 20" preserveAspectRatio="none"><path class="svg-rb-line" d="M0,10 Q25,2 50,10 Q75,18 100,10 Q125,2 150,10 Q175,18 200,10"/></svg>
+</section>
+
+<!-- ============== B3F: SUPERCHAT ============== -->
+<div class="floor rv"><span class="floor-tag"><span class="mi">diamond</span> B3F &#8212; スーパーチャット連動</span></div>
+<section class="sec">
+  <div class="sec-title rv"><span class="mi lg" style="color:#f472b6">auto_awesome</span> スパチャ = ゲーミングレインボー！</div>
+  <p class="sec-desc rv">スーパーチャットが投げられると、そのスライムが<strong>レインボーに輝きます！</strong><br>ゲーミング虹色に光るスライムで画面が華やかに。スパチャした視聴者も大喜び！</p>
+  <div class="sc-demo rv">
+    <div class="sc-lbl"><span class="mi" style="font-size:18px;vertical-align:middle">payments</span> スーパーチャット受信！</div>
+    <div style="display:flex;flex-direction:column;align-items:center">
+      <div class="px-bub" style="margin-bottom:18px">配信応援してます！</div>
+      <div class="spr s128 t-n rainbow" style="transform:scaleX(-1)"></div>
+    </div>
+    <p style="color:#666;font-size:.8rem;margin-top:10px">実際のゲーミングレインボーエフェクト</p>
+  </div>
+  <div class="fc rv" style="max-width:560px;margin:20px auto;text-align:center;padding:32px 24px">
+    <span class="mi xl" style="color:var(--gold)">trending_up</span>
+    <h3 style="font-size:1.3rem;margin-top:8px">配信者さんへのメリット</h3>
+    <p style="font-size:1rem;margin-top:8px">「スパチャ投げたらレインボーになる！」<br>この演出で視聴者のスパチャ意欲を刺激！<br><strong style="color:var(--gold);font-size:1.15rem">もっとスパチャが飛んでくるようになる！</strong></p>
+  </div>
+</section>
+
+<!-- WALK BANNER -->
+<div class="walk-track" style="height:60px">
+  <div class="walk-s spr s48 t-n run"></div><div class="walk-s spr s48 t-n run h-or"></div>
+  <div class="walk-s spr s48 t-f run"></div><div class="walk-s spr s48 t-w run"></div><div class="walk-s spr s48 t-l run"></div>
+</div>
+
+<!-- ============== B4F: RANKING ============== -->
+<div class="floor rv"><span class="floor-tag"><span class="mi">emoji_events</span> B4F &#8212; ランキング <span class="paid">有料版</span></span></div>
+<section class="sec">
+  <div class="sec-title rv"><span class="mi lg" style="color:var(--gold)">leaderboard</span> レベルランキングTOP10</div>
+  <p class="sec-desc rv">視聴者のレベルを自動集計してランキング表示！<br>TOP5のスライムには<strong>王冠</strong>が付き、<strong>1位はゲーミングレインボー王冠</strong>で輝きます！</p>
+  <div style="display:flex;align-items:center;justify-content:center;gap:24px;flex-wrap:wrap">
+    <div class="rank-box rv" style="margin:0">
+      <h4>👑 RANKING</h4>
+      <div class="rr t1"><span class="rk-c rb">👑</span><span class="rk-n lv100">たろう</span><span class="rk-lv">Lv.128</span></div>
+      <div class="rr t2"><span class="rk-c">👑</span><span class="rk-n" style="color:#ef4444">はなこ</span><span class="rk-lv">Lv.85</span></div>
+      <div class="rr t3"><span class="rk-c">👑</span><span class="rk-n" style="color:#8b5cf6">ゲームすき</span><span class="rk-lv">Lv.52</span></div>
+      <div class="rr t4"><span class="rk-c" style="filter:grayscale(1) brightness(1.5)">👑</span><span class="rk-n" style="color:#ccc">まさる</span><span class="rk-lv">Lv.38</span></div>
+      <div class="rr t5"><span class="rk-c" style="filter:grayscale(1) brightness(1.5)">👑</span><span class="rk-n" style="color:#ccc">ゆき</span><span class="rk-lv">Lv.27</span></div>
+    </div>
+    <!-- Crowned slime walking -->
+    <div class="rv" data-d="2" style="text-align:center">
+      <div class="crowned-slime">
+        <span class="crown-icon">👑</span>
+        <div class="spr s96 t-n run" style="transform:scaleX(-1)"></div>
+      </div>
+      <div class="pix" style="color:var(--gold);margin-top:6px;font-size:.85rem">TOP5には王冠が！</div>
+    </div>
+  </div>
+  <div class="fc rv" style="max-width:460px;margin:20px auto;text-align:center">
+    <span class="mi" style="color:var(--gold)">psychology</span>
+    <h3>承認欲求を刺激！</h3>
+    <p>ランキングに名前が載る＝視聴者の承認欲求を最大限に刺激！<br><strong style="color:var(--accent)">もっとコメントしてランクを上げたい！</strong>という気持ちが配信を盛り上げます。</p>
+  </div>
+</section>
+
+<!-- ============== B5F: ANGEL ============== -->
+<div class="floor rv"><span class="floor-tag"><span class="mi">star</span> B5F &#8212; Lv.100 超絶エフェクト <span class="paid">有料版</span></span></div>
+<section class="sec">
+  <div class="sec-title rv"><span class="mi lg" style="color:var(--gold)">auto_awesome</span> Lv.100到達 = 伝説のエンジェルスライム</div>
+  <p class="sec-desc rv">Lv.100に到達した超常連は、ランキングの名前が<strong style="color:#111;text-shadow:0 0 6px var(--gold),0 0 2px #fff">黒色太字</strong>になり、<br>スライムの周りに<strong style="color:var(--gold)">金色の+マーク</strong>が回転するエンジェルエフェクトが発動！</p>
+  <div style="display:flex;justify-content:center;margin:30px 0" class="rv">
+    <div class="angel-w"><div class="angel-o"><div class="a-p">+</div><div class="a-p">+</div><div class="a-p">+</div><div class="a-p">+</div><div class="a-p">+</div><div class="a-p">+</div></div><div class="spr s128 t-n idle" style="transform:scaleX(-1)"></div></div>
+  </div>
+  <p class="rv pix" style="text-align:center;color:var(--gold);font-size:.95rem">Lv.100 エンジェルエフェクト</p>
+  <div class="fc rv" style="max-width:460px;margin:20px auto;text-align:center">
+    <span class="mi" style="color:#ef4444">local_fire_department</span><h3>リスナーの究極目標に！</h3>
+    <p>Lv.100エンジェルを目指してみんながコメントを頑張る！<br><strong style="color:var(--accent)">コメント数アップ = 配信の盛り上がり！</strong></p>
+  </div>
+</section>
+
+<svg width="100%" height="24" viewBox="0 0 200 24" preserveAspectRatio="none" style="display:block"><path class="svg-rb-line" d="M0,12 Q12,4 25,12 Q37,20 50,12 Q62,4 75,12 Q87,20 100,12 Q112,4 125,12 Q137,20 150,12 Q162,4 175,12 Q187,20 200,12"/></svg>
+
+<!-- ============== B6F: COMPARE ============== -->
+<div class="floor rv"><span class="floor-tag"><span class="mi">compare_arrows</span> B6F &#8212; 無料版 vs 有料版</span></div>
+<section class="sec">
+  <div class="sec-title rv"><span class="mi lg" style="color:var(--accent)">balance</span> プランの比較</div>
+  <p class="sec-desc rv">無料版でも基本機能はバッチリ！有料版なら<strong style="color:var(--gold)">すべての機能が解放</strong>されます。</p>
+  <table class="cmp rv">
+    <thead><tr><th style="text-align:left">機能</th><th>無料版</th><th>有料版</th></tr></thead>
+    <tbody>
+      <tr><td>コメントスライム</td><td>&#10003;</td><td class="chk-gold">&#10003;</td></tr>
+      <tr><td>コメント吹き出し</td><td>&#10003;</td><td class="chk-gold">&#10003;</td></tr>
+      <tr><td>スパチャ レインボー</td><td>&#10003;</td><td class="chk-gold">&#10003;</td></tr>
+      <tr><td>レベルシステム</td><td>&#10003; 上限Lv.9</td><td class="chk-gold">&#10003; 上限なし</td></tr>
+      <tr><td>進化（火/水/草/泥）</td><td class="x-red">&#10007;</td><td class="chk-gold">&#10003;</td></tr>
+      <tr><td>👑 王冠</td><td class="x-red">&#10007;</td><td class="chk-gold">&#10003; TOP5</td></tr>
+      <tr><td>ランキングTOP10</td><td class="x-red">&#10007;</td><td class="chk-gold">&#10003;</td></tr>
+      <tr><td>Lv.100 エンジェルエフェクト</td><td class="x-red">&#10007;</td><td class="chk-gold">&#10003;</td></tr>
+      <tr><td>ワードカウンター</td><td>&#10003;「初見です」固定</td><td class="chk-gold">&#10003; 自由設定</td></tr>
+      <tr><td>ワード効果音 / 読み上げ</td><td class="x-red">&#10007;</td><td class="chk-gold">&#10003;</td></tr>
+      <tr><td>ボーナスフルーツ</td><td class="x-red">&#10007;</td><td class="chk-gold">&#10003;</td></tr>
+      <tr><td>サイズ・速度カスタマイズ</td><td>&#10003;</td><td class="chk-gold">&#10003;</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============== B7F: BENEFITS ============== -->
+<div class="floor rv"><span class="floor-tag"><span class="mi">workspace_premium</span> B7F &#8212; 配信者のメリット</span></div>
+<section class="sec">
+  <div class="sec-title rv"><span class="mi lg" style="color:var(--accent)">campaign</span> 配信者さんにとってのメリット</div>
+  <ul class="bl">
+    <li class="rv" data-d="1"><span class="mi lg ico-float">chat</span><div><h4>コメント量が超絶増加！</h4><p>レベルアップ・ランキング・進化の要素がコメント意欲を刺激。リスナーがどんどんコメントしてくれます。</p></div></li>
+    <li class="rv" data-d="2"><span class="mi lg ico-float">payments</span><div><h4>スパチャの意欲を刺激！！</h4><p>「スパチャ投げたらレインボーになる！」と気づいた視聴者がスパチャを投げてくれるようになる！</p></div></li>
+    <li class="rv" data-d="3"><span class="mi lg ico-spin-pause">replay</span><div><h4>リピーター定着率アップ！</h4><p>データ保存でレベルが継続。「前回の続き」を楽しみに視聴者が帰ってきてくれます。</p></div></li>
+    <li class="rv" data-d="4"><span class="mi lg ico-float">sports_esports</span><div><h4>ゲーミフィケーション効果！</h4><p>ランキング争い・進化・レベル上げで配信がまるでゲームのように盛り上がります。</p></div></li>
+    <li class="rv"><span class="mi lg ico-float">auto_awesome</span><div><h4>見た目が映える！</h4><p>かわいいドット絵スライムが画面を歩く様子は、配信のクオリティを一気に引き上げます。</p></div></li>
+  </ul>
+</section>
+
+<!-- ============== B8F: SETUP ============== -->
+<div class="floor rv"><span class="floor-tag"><span class="mi">build</span> B8F &#8212; 導入方法</span></div>
+<section class="sec">
+  <div class="sec-title rv"><span class="mi lg" style="color:var(--accent)">inventory_2</span> かんたん3ステップ導入</div>
+  <ol class="steps">
+    <li class="rv" data-d="1"><div><h4>わんコメの templates フォルダにZIPを移動</h4><p>ZIPファイルをそのままわんコメの templates フォルダに移動するだけ！</p></div></li>
+    <li class="rv" data-d="2"><div><h4>OBSにドラッグ＆ドロップで追加</h4><p>わんコメからそのままOBSにドラッグ＆ドロップするだけでOK！</p></div></li>
+    <li class="rv" data-d="3"><div><h4>わんコメを起動して接続完了！</h4><p>わんコメを起動するだけで自動接続。コメントが来るとスライムが画面を走り始めます。</p></div></li>
+  </ol>
+  <div class="fc rv" style="margin-top:20px;text-align:center">
+    <span class="mi" style="color:var(--accent)">settings</span>
+    <h3>細かい設定はOBSから！</h3>
+    <p>ブラウザソースを右クリック→「対話」を選択し、<br>表示された<strong>スライムの画面をタップ</strong>すると設定画面が開きます。<br>スライムの大きさ・速度・各種ON/OFFを自由にカスタマイズ！</p>
+  </div>
+  <div class="rv" style="text-align:center;margin-top:20px">
+    <p class="pix" style="color:#999;margin-bottom:12px"><span class="mi" style="font-size:18px;vertical-align:middle">play_circle</span> 設定方法の分かりやすい解説動画はBOOTHのページから！</p>
+    <a href="https://gurigen.booth.pm/items/8074557" target="_blank" rel="noopener" class="link-btn booth"><span class="mi">play_circle</span> 詳しい設定方法はこちら（BOOTH）</a>
+  </div>
+</section>
+
+<!-- ============== CTA ============== -->
+<section class="sec rv" style="text-align:center">
+  <p style="font-size:1.2rem;font-weight:900;margin-bottom:14px">あなたの配信をスライムで彩ろう！</p>
+  <p style="color:#777;margin-bottom:22px">コメントスライムを導入して、リスナーと一緒に楽しい配信を作りましょう</p>
+  <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
+    <div class="spr s64 t-n run" style="transform:scaleX(-1)"></div>
+    <div class="spr s64 t-f idle" style="transform:scaleX(-1)"></div>
+    <div class="spr s64 t-w idle" style="transform:scaleX(-1)"></div>
+    <div class="spr s64 t-l idle" style="transform:scaleX(-1)"></div>
+    <div class="spr s64 t-m idle" style="transform:scaleX(-1)"></div>
+  </div>
+</section>
+
+<!-- ============== CREATOR ============== -->
+<section class="sec rv" style="text-align:center;padding-bottom:20px;position:relative">
+  <div class="sec-title" style="justify-content:center"><span class="mi lg" style="color:var(--accent)">person</span> 制作者：ぐりげん</div>
+  <p style="color:#999;margin-bottom:20px">チャンネル登録・フォローで最新アップデート情報をチェック！</p>
+  <div class="link-row">
+    <a href="https://www.youtube.com/@gurigen_" target="_blank" rel="noopener" class="link-btn yt"><span class="mi">play_arrow</span> YouTube</a>
+    <a href="https://x.com/gurigen_youtube?t=J0Kdvs1JM2F1EPCZmpAm-A&s=09" target="_blank" rel="noopener" class="link-btn tw"><span class="mi">alternate_email</span> X（Twitter）</a>
+  </div>
+  <div style="margin-top:16px">
+    <a href="https://gurigen.booth.pm/items/8074557" target="_blank" rel="noopener" class="link-btn booth"><span class="mi">shopping_cart</span> 有料版はこちらから（BOOTH）</a>
+  </div>
+  <!-- ぐりげんスライム -->
+  <div style="position:absolute;bottom:20px;right:24px">
+    <div class="spr gs80 t-g guridle" style="transform:scaleX(-1)"></div>
+  </div>
+</section>
+
+<footer>
+  <p>コメントスライム v1.0.0 &#8212; Created by ぐりげん</p>
+  <p style="margin-top:6px;font-size:.65rem;color:#333">スライムの素材提供：みかづき様</p>
+</footer>
+
+<script>
+// Scroll reveal
+const ob=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('vis')})},{threshold:.12});
+document.querySelectorAll('.rv').forEach(el=>ob.observe(el));
+
+// ============== EVOLUTION DEMO ==============
+const evoTypes=[
+  {cls:'t-f',name:'火スライム',color:'#ef4444'},
+  {cls:'t-w',name:'水スライム',color:'#60a5fa'},
+  {cls:'t-l',name:'草スライム',color:'#22c55e'},
+  {cls:'t-m',name:'泥スライム',color:'#a16207'}
+];
+let evoXp=0,evoLv=1,evoEvolved=false;
+function xpForLevel(lv){return lv*(lv+1)/2;}
+function evoAddXp(amount){
+  if(evoEvolved)return;
+  evoXp+=amount;
+  // Recalc level
+  let newLv=1;
+  while(xpForLevel(newLv)<=evoXp)newLv++;
+  newLv--;if(newLv<1)newLv=1;
+  if(newLv>evoLv){
+    evoLv=newLv;
+    document.getElementById('evoMsg').textContent='LEVEL UP!! → Lv.'+evoLv;
+    document.getElementById('evoMsg').classList.remove('levelup-anim');
+    void document.getElementById('evoMsg').offsetWidth;
+    document.getElementById('evoMsg').classList.add('levelup-anim');
+  }
+  if(evoLv>=10&&!evoEvolved){
+    evoEvolved=true;
+    const t=evoTypes[Math.floor(Math.random()*evoTypes.length)];
+    const sl=document.getElementById('evoSlime');
+    const wrap=document.getElementById('evoSlimeWrap');
+    document.getElementById('evoMsg').textContent='!! 進化中 !!';
+    // Pulse white flash + scale up/down 3 times, then evolve
+    let pulseCount=0;
+    const maxPulses=3;
+    function doPulse(){
+      // Scale up + white
+      sl.style.filter='brightness(10)';
+      sl.style.transition='transform .15s ease-out, filter .15s';
+      sl.style.transform='scaleX(-1) scale(1.3)';
+      setTimeout(()=>{
+        // Scale down + normal
+        sl.style.filter='brightness(1)';
+        sl.style.transform='scaleX(-1) scale(1)';
+        setTimeout(()=>{
+          pulseCount++;
+          if(pulseCount<maxPulses){
+            doPulse();
+          } else {
+            // Final big white flash + type change
+            sl.style.filter='brightness(10)';
+            sl.style.transform='scaleX(-1) scale(1.5)';
+            wrap.classList.add('flash');
+            setTimeout(()=>{
+              wrap.classList.remove('flash');
+              sl.style.filter='';
+              sl.style.transition='';
+              sl.style.transform='scaleX(-1)';
+              sl.className='spr s128 idle '+t.cls;
+              document.getElementById('evoMsg').textContent='進化した！→ '+t.name+'！';
+              document.getElementById('evoMsg').style.color=t.color;
+            },300);
+          }
+        },200);
+      },200);
+    }
+    doPulse();
+  }
+  evoUpdateUI();
+}
+function evoUpdateUI(){
+  const needed=xpForLevel(evoLv+1);
+  const prev=xpForLevel(evoLv);
+  const pct=Math.min(100,((evoXp-prev)/(needed-prev))*100);
+  document.getElementById('evoLv').textContent='Lv. '+evoLv;
+  document.getElementById('evoXpText').textContent='XP: '+evoXp+' / '+needed;
+  document.getElementById('evoBar').style.width=pct+'%';
+}
+function evoReset(){
+  evoXp=0;evoLv=1;evoEvolved=false;
+  const sl=document.getElementById('evoSlime');
+  sl.className='spr s128 t-n idle';sl.style.transform='scaleX(-1)';
+  document.getElementById('evoMsg').textContent='';
+  document.getElementById('evoMsg').style.color='var(--gold)';
+  evoUpdateUI();
+}
+evoUpdateUI();
+</script>
+</body>
+</html>
